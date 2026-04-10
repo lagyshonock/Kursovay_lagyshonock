@@ -19,7 +19,7 @@ const bot = new Telegraf(token)
 const ENROLL_PAGE_SIZE = 6
 
 function getSiteUrl() {
-  const raw = process.env.SITE_URL || process.env.CLIENT_ORIGIN || "https://abcd1234.ngrok.io"
+  const raw = process.env.SITE_URL || process.env.CLIENT_ORIGIN || "https://kursovay-lagyshonock-1.onrender.com/"
   return raw.replace(/\/$/, "")
 }
 
