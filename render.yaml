@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: kursovay
+    env: node
+    region: ohio
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    runtime: node
+    nodeVersion: 20
