@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.gitignore
+*.md
+.env.local
+.cursor
+data
+server/data.sqlite

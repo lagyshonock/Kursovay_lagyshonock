@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, ChevronDown } from 'lucide-react';
+import { getTelegramEnrollUrl } from '@/lib/telegram';
 
 interface Particle {
   x: number;
@@ -194,7 +195,7 @@ export default function Hero() {
             <Button
               size="lg"
               className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-white border-0 shadow-glow-cyan hover:shadow-lg transition-all duration-300 text-base px-8 py-6 group"
-              onClick={() => window.open('https://t.me/itcourses', '_blank')}
+              onClick={() => window.open(getTelegramEnrollUrl({ source: 'hero' }), '_blank')}
             >
               <Send className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
               Записаться через Telegram

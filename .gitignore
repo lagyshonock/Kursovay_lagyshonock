@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Cursor: локально отключённый sandbox (см. ~/.cursor/sandbox.json)
+.cursor/sandbox.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Загруженные обложки курсов
+server/uploads/courses/*
+!server/uploads/courses/.gitkeep
