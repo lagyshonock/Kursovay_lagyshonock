@@ -32,18 +32,6 @@ npm run dev:all
 - только бот: `npm run bot`
 - **всё в production-режиме локально**: `npm run build` затем `npm start` (API + статика + бот)
 
-## Docker (рекомендуется)
-
-1. Скопируй `.env` из `.env.server.example` и заполни переменные (см. ниже).
-2. Запуск:
-
-```bash
-docker compose up --build
-```
-
-Сайт и API: **http://localhost:3001** (и фронт, и `/api` на одном origin).
-
-База SQLite в volume `course_data` по пути внутри контейнера `/app/server/data/data.sqlite` (см. `DB_PATH` в compose). Загруженные обложки курсов хранятся в volume **`course_uploads`** (`/app/server/uploads`).
 
 ## Переменные окружения (`.env`)
 
@@ -76,13 +64,6 @@ docker compose up --build
 1. В @BotFather включи **Domain** для бота (команда `/setdomain`) — укажи домен продакшена. Для **localhost** виджет обычно работает без домена.
 2. На страницах `/login` и `/register` используется виджет `oauth.telegram.org`; после нажатия «Log in» данные проверяются на сервере (`POST /api/auth/telegram`).
 
-## Админка
-
-- Вход: `/admin/login`
-- Панель: `/admin`
-- Вкладки: **Аналитика** (просмотры, график), **Курсы** (добавление / удаление)
-- **Обложка курса**: перетащи файл в зону или выбери с диска (JPG/PNG/GIF/WebP, до 5 МБ) — файл сохраняется на сервере, в БД пишется путь вида `/uploads/courses/<uuid>.jpg`. При необходимости можно открыть «Указать URL или путь вручную».
-
 ## API (кратко)
 
 - `GET /api/stats` — публичная статистика для лендинга (курсы, пользователи, заявки, просмотры)
@@ -105,19 +86,3 @@ docker compose up --build
 - На главной убран тяжёлый canvas Hero; фон популярного курса — статичное изображение + градиент
 - `loading="lazy"` для карточек курсов
 
-## Если на Windows падает Vite (`spawn EPERM`, `Отказано в доступа` для node.exe)
-
-0. **В репозитории уже стоит обход:** в `package.json` → `overrides` подключён **`esbuild-wasm`** вместо нативного бинарника `esbuild` (он чаще всего и даёт `spawn … esbuild.exe EPERM` в путях с кириллицей). Выполни **`npm install`** заново, затем **`npm run build`**. Сборка может быть чуть медленнее, зато без запуска `.exe` из `node_modules`.
-1. **Путь к проекту** — по возможности перенеси папку в каталог **только с латиницей**, например `C:\dev\site` (пути с кириллицей иногда ломают spawn у `esbuild` / Vite).
-2. **Защита Windows** — «Безопасность Windows» → защита от вирусов → **Управление настройками** → **Исключения** → добавь папку проекта и `C:\Program Files\nodejs`.
-3. **Контролируемый доступ к папкам** — если включён, разреши для `node.exe` / терминала (Cursor, PowerShell) изменение папки проекта.
-4. Переустанови зависимости и пересобери нативный esbuild:
-   ```bash
-   rmdir /s /q node_modules
-   del package-lock.json
-   npm i
-   npm rebuild esbuild
-   ```
-5. Ошибка **`$LASTEXITCODE` в npm.ps1** — это баг/особенность оболочки. Запускай команды через **cmd**: `cmd /c "npm run dev:all"` или используй **`npm.cmd`** вместо `npm` в PowerShell.
-
-Конфиг Vite в проекте — **`vite.config.mjs`** (без дубликата `vite.config.ts`), скрипт **`npm run dev:all`** вызывает `nodemon` и `vite` напрямую, без вложенного `npm run`.
