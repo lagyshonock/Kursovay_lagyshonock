@@ -943,7 +943,7 @@ app.post("/api/me/password", requireAuth, async (req, res) => {
 if (process.env.NODE_ENV === "production") {
   const dist = path.join(__dirname, "../dist")
   app.use(express.static(dist, { index: false }))
-  app.get("/*", (req, res, next) => {
+  app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api")) return next()
     res.sendFile(path.join(dist, "index.html"))
   })
