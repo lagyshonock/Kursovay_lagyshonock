@@ -102,6 +102,8 @@
     "node": "20.x"
   },
   "overrides": {
-    "esbuild": "npm:esbuild-wasm@^0.25.0"
+    "esbuild": "npm:esbuild-wasm@^0.25.0",
+    "sqlite3": "5.1.6",
+    "node": "20.x"
   }
 }
