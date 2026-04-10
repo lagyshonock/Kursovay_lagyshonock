@@ -183,7 +183,7 @@ app.listen(3000);
       },
       {
         title: "Урок 3. SQL и транзакции",
-        body: `Пример (SQLite): выдача доступа без гонки
+        body: `Пример (PostgreSQL / Supabase): выдача доступа без гонки
 BEGIN TRANSACTION;
 INSERT INTO course_access (user_id, course_id) VALUES (?, ?);
 COMMIT;
@@ -411,14 +411,9 @@ services:
   api:
     build: ./server
     environment:
-      DB_PATH: /data/app.db
-    volumes:
-      - sqlite_data:/data
+      DATABASE_URL: postgresql://user:pass@db:5432/app
     ports:
       - "8787:8787"
-
-volumes:
-  sqlite_data:
 
 Задача
 1) Добавь healthcheck для api (curl/wget к /api/health).

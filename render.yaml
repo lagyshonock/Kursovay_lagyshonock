@@ -1,10 +1,32 @@
 services:
   - type: web
     name: kursovay
-    env: node
+    runtime: node
     region: ohio
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    runtime: node
     nodeVersion: 20
+    healthCheckPath: /api/health
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_IDS
+        sync: false
+      - key: VITE_TELEGRAM_BOT_USERNAME
+        sync: false

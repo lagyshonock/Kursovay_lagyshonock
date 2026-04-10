@@ -1,6 +1,6 @@
 # IT Курсы — сайт + API + Telegram
 
-Лендинг на **React + Vite + Tailwind**, бэкенд **Express + SQLite**, **Telegram-бот** (запись на курсы + админ-команды), **вход/регистрация через Telegram Login Widget**.
+Лендинг на **React + Vite + Tailwind**, бэкенд **Express + SQLite/PostgreSQL**, **Telegram-бот** (запись на курсы + админ-команды), **вход/регистрация через Telegram Login Widget**.
 
 ## Возможности
 
@@ -43,7 +43,7 @@ docker compose up --build
 
 Сайт и API: **http://localhost:3001** (и фронт, и `/api` на одном origin).
 
-База SQLite в volume `course_data` по пути внутри контейнера `/app/server/data/data.sqlite` (см. `DB_PATH` в compose). Загруженные обложки курсов хранятся в volume **`course_uploads`** (`/app/server/uploads`).
+Если задан `DATABASE_URL` — используется PostgreSQL (Supabase/Render Postgres). Если `DATABASE_URL` пустой — используется SQLite по `DB_PATH`. Загруженные обложки курсов хранятся в volume **`course_uploads`** (`/app/server/uploads`).
 
 ## Переменные окружения (`.env`)
 
@@ -53,7 +53,8 @@ docker compose up --build
 | `CLIENT_ORIGIN` | Origin фронта для CORS (dev: `http://localhost:5173`, Docker: `http://localhost:3001`) |
 | `SITE_URL` | Публичный URL сайта для **кнопок в боте** (dev: `http://localhost:5173`, Docker: `http://localhost:3001`) |
 | `JWT_SECRET` | Секрет JWT |
-| `DB_PATH` | Путь к SQLite (например `server/data.sqlite`) |
+| `DB_PATH` | Путь к SQLite (по умолчанию `server/data.sqlite`) |
+| `DATABASE_URL` | Строка подключения PostgreSQL (Supabase/Render Postgres). При наличии включает режим PostgreSQL |
 | `TELEGRAM_BOT_TOKEN` | Токен бота от @BotFather |
 | `ADMIN_PASSWORD` | Пароль входа в веб-админку |
 | `TELEGRAM_ADMIN_IDS` | ID админов в Telegram через запятую (команды бота) |
@@ -97,7 +98,23 @@ docker compose up --build
 ## Структура
 
 - `src/` — React SPA
-- `server/` — Express, SQLite, бот (`server/bot.js`), точка входа `server/entry.js` (API + бот)
+- `server/` — Express, SQLite/PostgreSQL, бот (`server/bot.js`), точка входа `server/entry.js` (API + бот)
+
+## Деплой на Render
+
+В проекте уже есть `render.yaml` для Blueprint-деплоя.
+
+1. Подключи репозиторий в Render: **New -> Blueprint**.
+2. При создании сервиса задай env vars:
+   - `CLIENT_ORIGIN` = `https://<your-service>.onrender.com`
+   - `SITE_URL` = `https://<your-service>.onrender.com`
+   - `DATABASE_URL` = строка PostgreSQL (Supabase или Render Postgres)
+   - `ADMIN_PASSWORD` = пароль админки
+   - `TELEGRAM_BOT_TOKEN` = токен бота
+   - `TELEGRAM_ADMIN_IDS` = id админов через запятую
+   - `VITE_TELEGRAM_BOT_USERNAME` = username бота без `@`
+3. `JWT_SECRET` сгенерируется автоматически из `render.yaml`.
+4. После деплоя в BotFather (`/setdomain`) укажи домен Render-сервиса для Telegram Login.
 
 ## Производительность
 

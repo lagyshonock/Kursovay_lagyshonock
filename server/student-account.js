@@ -63,7 +63,7 @@ export async function loginTakenByOther(db, login, excludeUserId) {
 
 /**
  * Уникальный account_login (для excludeUserId — при обновлении своей записи).
- * @param {import('sqlite').Database} db
+ * @param {{ get: Function }} db
  */
 export async function allocateAccountLogin(db, telegramUsername, excludeUserId) {
   const fromTg = loginFromTelegramUsername(telegramUsername)

@@ -10,12 +10,9 @@ services:
       PORT: "3001"
       CLIENT_ORIGIN: http://localhost:3001
       SITE_URL: http://localhost:3001
-      DB_PATH: /app/server/data/data.sqlite
     volumes:
-      - course_data:/app/server/data
       - course_uploads:/app/server/uploads
     restart: unless-stopped
 
 volumes:
-  course_data:
   course_uploads:

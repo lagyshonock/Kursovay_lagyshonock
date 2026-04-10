@@ -98,9 +98,9 @@ export default function AdminDatabaseTab() {
               <Database className="w-5 h-5 text-emerald-300" />
             </div>
             <div>
-              <h2 className="font-display text-xl text-white">База данных SQLite</h2>
+              <h2 className="font-display text-xl text-white">База данных (Supabase)</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Файл создаётся при первом запуске API. Просмотр только для чтения; пароли в таблице users скрыты.
+                Подключение через DATABASE_URL. Просмотр только для чтения; пароли в таблице users скрыты.
               </p>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function AdminDatabaseTab() {
           <p className="text-gray-500 mt-4">Загрузка…</p>
         ) : overview ? (
           <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
-            <p className="text-xs text-gray-500 mb-1">Путь к файлу</p>
+            <p className="text-xs text-gray-500 mb-1">Подключение</p>
             <code className="text-sm text-emerald-200/90 break-all">{overview.file}</code>
           </div>
         ) : null}

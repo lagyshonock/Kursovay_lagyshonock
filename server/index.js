@@ -7,7 +7,7 @@ import crypto from "node:crypto"
 import { fileURLToPath } from "node:url"
 import multer from "multer"
 import { z } from "zod"
-import { getDb, dbFilePath } from "./db.js"
+import { getDb, getDatabaseDisplayHint } from "./db.js"
 import { getCourseIdBySlug, recordCourseView } from "./analytics.js"
 import { hashPassword, requireAdmin, requireAuth, signAdminToken, signToken, verifyPassword } from "./auth.js"
 import { verifyTelegramAuth } from "./telegram-verify.js"
@@ -82,10 +82,10 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }))
 /** Публичная «витринная» статистика для лендинга */
 app.get("/api/stats", async (_req, res) => {
   const db = await getDb()
-  const courses = (await db.get("SELECT COUNT(*) as n FROM courses"))?.n ?? 0
-  const enrollments = (await db.get("SELECT COUNT(*) as n FROM course_enrollments"))?.n ?? 0
-  const users = (await db.get("SELECT COUNT(*) as n FROM users"))?.n ?? 0
-  const totalViews = (await db.get("SELECT COUNT(*) as n FROM course_view_events"))?.n ?? 0
+  const courses = Number((await db.get("SELECT COUNT(*)::bigint AS n FROM courses"))?.n) || 0
+  const enrollments = Number((await db.get("SELECT COUNT(*)::bigint AS n FROM course_enrollments"))?.n) || 0
+  const users = Number((await db.get("SELECT COUNT(*)::bigint AS n FROM users"))?.n) || 0
+  const totalViews = Number((await db.get("SELECT COUNT(*)::bigint AS n FROM course_view_events"))?.n) || 0
   return res.json({
     courses,
     enrollments,
@@ -178,7 +178,7 @@ async function buildMeUser(db, userId) {
        FROM course_enrollments ce
        LEFT JOIN courses c ON c.slug = ce.course_slug
        WHERE ce.telegram_user_id = ?
-       ORDER BY datetime(ce.created_at) DESC`,
+       ORDER BY ce.created_at DESC`,
       row.telegram_id
     )
     enrollments = enRows.map((r) => ({
@@ -209,7 +209,7 @@ async function buildMeUser(db, userId) {
      FROM course_access ca
      JOIN courses c ON c.id = ca.course_id
      WHERE ca.user_id = ?
-     ORDER BY datetime(ca.created_at) DESC`,
+     ORDER BY ca.created_at DESC`,
     userId
   )
   const library = accessRows.map((r) => ({
@@ -301,10 +301,10 @@ app.get("/api/admin/analytics", requireAdmin, async (_req, res) => {
     ORDER BY c.view_count DESC
   `)
   const last7 = await db.all(`
-    SELECT date(created_at) AS day, COUNT(*) AS cnt
+    SELECT (created_at::date)::text AS day, COUNT(*)::bigint AS cnt
     FROM course_view_events
-    WHERE created_at >= datetime('now', '-7 days')
-    GROUP BY date(created_at)
+    WHERE created_at >= NOW() - INTERVAL '7 days'
+    GROUP BY created_at::date
     ORDER BY day ASC
   `)
   const top = await db.all(`
@@ -313,7 +313,15 @@ app.get("/api/admin/analytics", requireAdmin, async (_req, res) => {
     ORDER BY c.view_count DESC
     LIMIT 10
   `)
-  return res.json({ totals, viewsByDay: last7, topCourses: top })
+  return res.json({
+    totals: totals.map((t) => ({
+      ...t,
+      view_count: Number(t.view_count) || 0,
+      event_count: Number(t.event_count) || 0,
+    })),
+    viewsByDay: last7.map((r) => ({ day: r.day, cnt: Number(r.cnt) || 0 })),
+    topCourses: top.map((t) => ({ ...t, view_count: Number(t.view_count) || 0 })),
+  })
 })
 
 app.get("/api/admin/courses", requireAdmin, async (_req, res) => {
@@ -362,7 +370,7 @@ app.put("/api/admin/courses/:id", requireAdmin, async (req, res) => {
   await db.run(
     `UPDATE courses SET
        slug = ?, title = ?, description = ?, image = ?, duration = ?, students = ?, level = ?, color = ?,
-       about = ?, what_you_learn_json = ?, format_json = ?, materials_json = ?, updated_at = datetime('now')
+       about = ?, what_you_learn_json = ?, format_json = ?, materials_json = ?, updated_at = NOW()
      WHERE id = ?`,
     c.slug,
     c.title,
@@ -394,7 +402,7 @@ app.patch("/api/admin/courses/:id/materials", requireAdmin, async (req, res) => 
 
   const db = await getDb()
   const result = await db.run(
-    `UPDATE courses SET materials_json = ?, updated_at = datetime('now') WHERE id = ?`,
+    `UPDATE courses SET materials_json = ?, updated_at = NOW() WHERE id = ?`,
     JSON.stringify(parsed.data.materials),
     id
   )
@@ -426,7 +434,8 @@ app.post("/api/admin/courses", requireAdmin, async (req, res) => {
       `INSERT INTO courses
         (slug, title, description, image, duration, students, level, color, about, what_you_learn_json, format_json, updated_at)
        VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+       RETURNING id`,
       c.slug,
       c.title,
       c.description,
@@ -441,6 +450,7 @@ app.post("/api/admin/courses", requireAdmin, async (req, res) => {
     )
     return res.status(201).json({ id: result.lastID })
   } catch (e) {
+    if (e?.code === "23505") return res.status(409).json({ error: "slug_taken" })
     const msg = String(e?.message || "")
     if (msg.includes("UNIQUE") || msg.includes("unique")) return res.status(409).json({ error: "slug_taken" })
     throw e
@@ -505,7 +515,7 @@ app.get("/api/admin/course-access", requireAdmin, async (_req, res) => {
      FROM course_access ca
      JOIN users u ON u.id = ca.user_id
      JOIN courses c ON c.id = ca.course_id
-     ORDER BY datetime(ca.created_at) DESC
+     ORDER BY ca.created_at DESC
      LIMIT 500`
   )
   return res.json({ grants: rows })
@@ -528,13 +538,14 @@ app.post("/api/admin/course-access", requireAdmin, async (req, res) => {
 
   try {
     const result = await db.run(
-      `INSERT INTO course_access (user_id, course_id, note) VALUES (?, ?, ?)`,
+      `INSERT INTO course_access (user_id, course_id, note) VALUES (?, ?, ?) RETURNING id`,
       parsed.data.user_id,
       parsed.data.course_id,
       parsed.data.note?.trim() || null
     )
     return res.status(201).json({ id: result.lastID })
   } catch (e) {
+    if (e?.code === "23505") return res.status(409).json({ error: "already_granted" })
     const msg = String(e?.message || "")
     if (msg.includes("UNIQUE") || msg.includes("unique")) return res.status(409).json({ error: "already_granted" })
     throw e
@@ -562,7 +573,7 @@ app.get("/api/admin/enrollments", requireAdmin, async (req, res) => {
      FROM course_enrollments e
      LEFT JOIN courses c ON c.slug = e.course_slug
      LEFT JOIN users u ON u.telegram_id = e.telegram_user_id
-     ORDER BY datetime(e.created_at) DESC
+     ORDER BY e.created_at DESC
      LIMIT ?`,
     limit
   )
@@ -585,13 +596,14 @@ app.post("/api/admin/enrollments/:id/grant-access", requireAdmin, async (req, re
   if (!course) return res.status(400).json({ error: "course_not_found" })
   try {
     const result = await db.run(
-      `INSERT INTO course_access (user_id, course_id, note) VALUES (?, ?, ?)`,
+      `INSERT INTO course_access (user_id, course_id, note) VALUES (?, ?, ?) RETURNING id`,
       user.id,
       course.id,
       `заявка #${id}`
     )
     return res.status(201).json({ id: result.lastID })
   } catch (e) {
+    if (e?.code === "23505") return res.status(409).json({ error: "already_granted" })
     const msg = String(e?.message || "")
     if (msg.includes("UNIQUE") || msg.includes("unique")) return res.status(409).json({ error: "already_granted" })
     throw e
@@ -681,21 +693,20 @@ app.post("/api/admin/chat/send", requireAdmin, async (req, res) => {
   }
 })
 
-/** Обзор SQLite: путь к файлу и число строк по таблицам (только админ). */
+const TABLE_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+
+/** Обзор БД: подключение и число строк по таблицам public (только админ). */
 app.get("/api/admin/db/overview", requireAdmin, async (_req, res) => {
   const db = await getDb()
-  const tables = await db.all(
-    `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC`
-  )
+  const tables = await db.listTables()
   const list = []
-  for (const { name } of tables) {
-    const r = await db.get(`SELECT COUNT(*) as n FROM "${name}"`)
-    list.push({ name, count: r?.n ?? 0 })
+  for (const name of tables) {
+    if (!TABLE_NAME_RE.test(name)) continue
+    const r = await db.get(`SELECT COUNT(*) AS n FROM "${name}"`)
+    list.push({ name, count: Number(r?.n) || 0 })
   }
-  return res.json({ file: dbFilePath, tables: list })
+  return res.json({ file: getDatabaseDisplayHint(), tables: list })
 })
-
-const TABLE_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/
 
 /** Просмотр строк таблицы (read-only). Пароли в `users` маскируются. */
 app.get("/api/admin/db/table/:name", requireAdmin, async (req, res) => {
@@ -703,15 +714,15 @@ app.get("/api/admin/db/table/:name", requireAdmin, async (req, res) => {
   if (!TABLE_NAME_RE.test(name)) return res.status(400).json({ error: "invalid_table" })
 
   const db = await getDb()
-  const exists = await db.get(`SELECT name FROM sqlite_master WHERE type='table' AND name = ?`, name)
+  const exists = await db.tableExists(name)
   if (!exists) return res.status(404).json({ error: "not_found" })
 
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50))
   const offset = Math.max(0, Number(req.query.offset) || 0)
 
-  const totalRow = await db.get(`SELECT COUNT(*) as n FROM "${name}"`)
-  const total = totalRow?.n ?? 0
-  const rows = await db.all(`SELECT * FROM "${name}" ORDER BY rowid DESC LIMIT ? OFFSET ?`, limit, offset)
+  const totalRow = await db.get(`SELECT COUNT(*) AS n FROM "${name}"`)
+  const total = Number(totalRow?.n) || 0
+  const rows = await db.tableRows(name, { limit, offset })
 
   let out = rows
   if (name === "users") {
@@ -721,7 +732,7 @@ app.get("/api/admin/db/table/:name", requireAdmin, async (req, res) => {
     }))
   }
 
-  return res.json({ name, file: dbFilePath, total, limit, offset, rows: out })
+  return res.json({ name, file: getDatabaseDisplayHint(), total, limit, offset, rows: out })
 })
 
 app.post("/api/auth/telegram", async (req, res) => {
@@ -821,7 +832,7 @@ app.post("/api/auth/register", async (req, res) => {
 
   const passwordHash = await hashPassword(password)
   const result = await db.run(
-    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?) RETURNING id",
     name,
     email.toLowerCase(),
     passwordHash

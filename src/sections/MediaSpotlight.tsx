@@ -11,7 +11,7 @@ const mentions = [
   {
     outlet: "Хабр",
     title: "От лендинга до LMS: один репозиторий для маркетинга и записи студентов",
-    excerpt: "Разбор архитектуры: React, Express, SQLite и бот для заявок без лишних сервисов.",
+    excerpt: "Разбор архитектуры: React, Express, Supabase (PostgreSQL) и бот для заявок.",
     tag: "Статья",
   },
   {

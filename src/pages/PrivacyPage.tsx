@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-display text-xl text-white mb-3">4. Хранение</h2>
           <p className="leading-relaxed">
-            Данные хранятся в базе SQLite на сервере, к которому у вас есть доступ при самостоятельном хостинге. Срок хранения
+            Данные хранятся в базе PostgreSQL (Supabase); при самостоятельном хостинге политика доступа определяется вами. Срок хранения
             определяется политикой оператора.
           </p>
         </section>

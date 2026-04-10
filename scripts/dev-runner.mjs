@@ -1,6 +1,6 @@
 /**
  * Запуск API + Vite (+ опционально бот) одним процессом Node.
- * API/бот в dev: nodemon (debounce, игнор *.sqlite) при наличии; иначе node --watch.
+ * API/бот в dev: nodemon (debounce) при наличии; иначе node --watch.
  *
  * Использование: node scripts/dev-runner.mjs
  * С ботом:      node scripts/dev-runner.mjs --bot
@@ -18,7 +18,7 @@ const withBot = process.argv.includes("--bot")
 const viteCli = path.join(root, "node_modules", "vite", "bin", "vite.js")
 const nodemonJs = path.join(root, "node_modules", "nodemon", "bin", "nodemon.js")
 
-/** Nodemon + debounce + игнор SQLite: меньше обрывов прокси (ECONNRESET), если watch перезапускает API во время запроса. */
+/** Nodemon + debounce: меньше обрывов прокси (ECONNRESET), если watch перезапускает API во время запроса. */
 function watchedServerArgs(entry) {
   if (fs.existsSync(nodemonJs)) {
     return [
@@ -30,12 +30,6 @@ function watchedServerArgs(entry) {
       "server",
       "--ext",
       "js,mjs,cjs",
-      "--ignore",
-      "server/data.sqlite",
-      "--ignore",
-      "server/data.sqlite-wal",
-      "--ignore",
-      "server/data.sqlite-shm",
       entry,
     ]
   }

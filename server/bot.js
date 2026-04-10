@@ -23,6 +23,19 @@ function getSiteUrl() {
   return raw.replace(/\/$/, "")
 }
 
+function getTelegramSafeSiteUrl() {
+  try {
+    const site = getSiteUrl()
+    const u = new URL(site)
+    // Telegram rejects localhost/private dev URLs in inline URL buttons.
+    if (u.protocol !== "https:") return null
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return null
+    return u.origin
+  } catch {
+    return null
+  }
+}
+
 function getAdminIds() {
   const raw = process.env.TELEGRAM_ADMIN_IDS || ""
   return raw
@@ -188,8 +201,9 @@ async function getCourseForEnrollIntro(slug) {
 }
 
 function courseEnrollKeyboard(slug) {
-  const site = getSiteUrl()
+  const site = getTelegramSafeSiteUrl()
   const pathSlug = encodeURIComponent(slug)
+  if (!site) return Markup.inlineKeyboard([[inlineCb("ℹ️ Ссылки недоступны в локальном режиме", "noop")]])
   return Markup.inlineKeyboard([
     [inlineUrl("📄 Страница этого курса", `${site}/courses/${pathSlug}`, "primary")],
     [inlineUrl("📚 Все программы", `${site}/courses`, "success")],
@@ -199,11 +213,11 @@ function courseEnrollKeyboard(slug) {
 
 async function fetchCoursesList() {
   const db = await getDb()
-  return db.all("SELECT id, slug, title, level FROM courses ORDER BY title COLLATE NOCASE ASC")
+  return db.all("SELECT id, slug, title, level FROM courses ORDER BY LOWER(title) ASC")
 }
 
 function enrollKeyboard(courses, page) {
-  const site = getSiteUrl()
+  const site = getTelegramSafeSiteUrl()
   const total = courses.length
   const lastPage = Math.max(0, Math.ceil(total / ENROLL_PAGE_SIZE) - 1)
   const safePage = Math.min(Math.max(0, page), lastPage)
@@ -227,18 +241,24 @@ function enrollKeyboard(courses, page) {
   navRow.push(inlineCb("💬 Без курса", "e:0"))
   if (safePage < lastPage) navRow.push(inlineCb("Вперёд ▶️", `ep:${safePage + 1}`, "primary"))
   rows.push(navRow)
-  rows.push([inlineUrl("📚 Открыть каталог в браузере", `${site}/courses`, "primary")])
+  if (site) rows.push([inlineUrl("📚 Открыть каталог в браузере", `${site}/courses`, "primary")])
+  else rows.push([inlineCb("ℹ️ Каталог: включите публичный SITE_URL (https)", "noop")])
 
   return Markup.inlineKeyboard(rows)
 }
 
 function siteLinksKeyboard() {
-  const site = getSiteUrl()
+  const site = getTelegramSafeSiteUrl()
+  if (!site) return Markup.inlineKeyboard([[inlineCb("ℹ️ Ссылки появятся с публичным SITE_URL (https)", "noop")]])
   return Markup.inlineKeyboard([
     [inlineUrl("📚 Каталог курсов", `${site}/courses`, "primary")],
     [inlineUrl("🌐 Сайт школы", site, "success")],
   ])
 }
+
+bot.action("noop", async (ctx) => {
+  await ctx.answerCbQuery("Нужен публичный https SITE_URL")
+})
 
 async function sendCoursePicker(ctx, page = 0, introPrefix = "") {
   const courses = await fetchCoursesList()
@@ -771,7 +791,8 @@ bot.on("text", async (ctx) => {
         await db.run(
           `INSERT INTO courses
             (slug, title, description, image, duration, students, level, color, about, what_you_learn_json, format_json, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+           RETURNING id`,
           data.slug,
           data.title,
           data.description,
@@ -786,6 +807,7 @@ bot.on("text", async (ctx) => {
         )
       } catch (e) {
         ctx.session.admin = null
+        if (e?.code === "23505") return ctx.reply("Slug занят. Начни снова: /admin_add_course")
         const msg = String(e?.message || "")
         if (msg.includes("UNIQUE") || msg.includes("unique")) return ctx.reply("Slug занят. Начни снова: /admin_add_course")
         // eslint-disable-next-line no-console

@@ -6,14 +6,14 @@
 const MAX_BODY = 3900
 
 /**
- * @param {import('sqlite').Database} db
+ * @param {{ run: Function }} db
  * @param {{ telegram_user_id: number, enrollment_id?: number | null, direction: 'in' | 'out', body: string }} row
  */
 export async function insertChatMessage(db, row) {
   const body = String(row.body || "").slice(0, MAX_BODY)
   const r = await db.run(
-    `INSERT INTO telegram_chat_messages (telegram_user_id, enrollment_id, direction, body, created_at)
-     VALUES (?, ?, ?, ?, datetime('now'))`,
+    `INSERT INTO telegram_chat_messages (telegram_user_id, enrollment_id, direction, body)
+     VALUES (?, ?, ?, ?) RETURNING id`,
     row.telegram_user_id,
     row.enrollment_id ?? null,
     row.direction,
@@ -23,7 +23,7 @@ export async function insertChatMessage(db, row) {
 }
 
 /**
- * @param {import('sqlite').Database} db
+ * @param {{ get: Function }} db
  * @param {number} telegramUserId
  */
 export async function isEligibleForSupportChat(db, telegramUserId) {
@@ -43,7 +43,7 @@ export async function isEligibleForSupportChat(db, telegramUserId) {
 }
 
 /**
- * @param {import('sqlite').Database} db
+ * @param {{ all: Function }} db
  * @param {number} telegramUserId
  * @param {{ afterId?: number, limit?: number }} opts
  */
@@ -63,7 +63,7 @@ export async function listChatMessages(db, telegramUserId, opts = {}) {
 }
 
 /**
- * @param {import('sqlite').Database} db
+ * @param {{ all: Function }} db
  */
 export async function listChatThreads(db) {
   return db.all(
@@ -83,7 +83,7 @@ export async function listChatThreads(db) {
      ) AS t
      JOIN telegram_chat_messages AS m ON m.id = t.max_id
      LEFT JOIN users AS u ON u.telegram_id = t.telegram_user_id
-     ORDER BY datetime(m.created_at) DESC
+     ORDER BY m.created_at DESC
      LIMIT 200`
   )
 }

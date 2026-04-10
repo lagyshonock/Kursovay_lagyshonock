@@ -47,7 +47,7 @@ const NAV: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "chat", label: "Чат", icon: MessagesSquare },
   { id: "access", label: "Доступ", icon: KeyRound },
   { id: "courses", label: "Курсы", icon: BookOpen },
-  { id: "database", label: "База SQLite", icon: Database },
+  { id: "database", label: "База (Supabase)", icon: Database },
 ]
 
 export default function AdminDashboardPage() {
@@ -178,7 +178,7 @@ export default function AdminDashboardPage() {
                   {tab === "chat" && "Переписка с теми, кто пишет в боте; ответы уходят в Telegram."}
                   {tab === "access" && "Кто видит материалы курсов: выдача и отзыв доступа."}
                   {tab === "courses" && "Витрина, уроки внутри курса, загрузка обложек."}
-                  {tab === "database" && "Только чтение SQLite (отладка)."}
+                  {tab === "database" && "Только чтение PostgreSQL в Supabase (отладка)."}
                 </p>
               </div>
             </div>
